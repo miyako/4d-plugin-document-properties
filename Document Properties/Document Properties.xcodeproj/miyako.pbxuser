@@ -49,12 +49,12 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 385300974;
-			PBXWorkspaceStateSaveDate = 385300974;
+			PBXPerProjectTemplateStateSaveDate = 407061626;
+			PBXWorkspaceStateSaveDate = 407061626;
 		};
 		perUserProjectItems = {
+			D13A2AF91843451100E722A3 /* PBXTextBookmark */ = D13A2AF91843451100E722A3 /* PBXTextBookmark */;
 			D164172116F739F900377EA3 /* PBXTextBookmark */ = D164172116F739F900377EA3 /* PBXTextBookmark */;
-			D17ABF3916DD3B4A003A60C6 /* PBXTextBookmark */ = D17ABF3916DD3B4A003A60C6 /* PBXTextBookmark */;
 		};
 		sourceControlManager = D1FA61E516DD32C30054C129 /* Source Control */;
 		userBuildSettings = {
@@ -62,7 +62,7 @@
 	};
 	089C167EFE841241C02AAC07 /* English */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {586, 228}}";
+			sepNavIntBoundsRect = "{{0, 0}, {586, 219}}";
 			sepNavSelRange = "{0, 0}";
 			sepNavVisRange = "{0, 202}";
 			sepNavWindowFrame = "{{15, 98}, {1031, 775}}";
@@ -70,10 +70,10 @@
 	};
 	18B684FE06944F8800CC6A1E /* 4DPlugin.cpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1111, 7553}}";
-			sepNavSelRange = "{1156, 0}";
-			sepNavVisRange = "{307, 1122}";
-			sepNavWindowFrame = "{{38, 77}, {1031, 775}}";
+			sepNavIntBoundsRect = "{{0, 0}, {1111, 7917}}";
+			sepNavSelRange = "{2162, 83}";
+			sepNavVisRange = "{1961, 1278}";
+			sepNavWindowFrame = "{{478, 74}, {1031, 775}}";
 		};
 	};
 	8D01CCC60486CAD60068D4B7 /* Document Properties */ = {
@@ -99,7 +99,7 @@
 			sepNavVisRange = "{0, 741}";
 		};
 	};
-	D164172116F739F900377EA3 /* PBXTextBookmark */ = {
+	D13A2AF91843451100E722A3 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
 		fRef = 089C167EFE841241C02AAC07 /* English */;
 		name = "InfoPlist.strings: 1";
@@ -109,7 +109,7 @@
 		vrLen = 202;
 		vrLoc = 0;
 	};
-	D17ABF3916DD3B4A003A60C6 /* PBXTextBookmark */ = {
+	D164172116F739F900377EA3 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
 		fRef = 089C167EFE841241C02AAC07 /* English */;
 		name = "InfoPlist.strings: 1";
