@@ -14,12 +14,12 @@ Commands
 
 ```c
 // --- Files and Folders
-void PATH_Get_creation_date(sLONG_PTR *pResult, PackagePtr pParams);
-void PATH_Set_modification_date(sLONG_PTR *pResult, PackagePtr pParams);
-void PATH_Get_modification_date(sLONG_PTR *pResult, PackagePtr pParams);
-void PATH_Set_creation_date(sLONG_PTR *pResult, PackagePtr pParams);
-void PATH_Get_access_date(sLONG_PTR *pResult, PackagePtr pParams);
-void PATH_Set_access_date(sLONG_PTR *pResult, PackagePtr pParams);
-void PATH_Get_hidden(sLONG_PTR *pResult, PackagePtr pParams);
-void PATH_Set_hidden(sLONG_PTR *pResult, PackagePtr pParams);
+PATH_Get_creation_date
+PATH_Set_modification_date
+PATH_Get_modification_date
+PATH_Set_creation_date
+PATH_Get_access_date
+PATH_Set_access_date
+PATH_Get_hidden
+PATH_Set_hidden
 ```
