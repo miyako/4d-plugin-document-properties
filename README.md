@@ -32,3 +32,58 @@ PATH Set access date
 PATH Get hidden
 PATH Set hidden
 ```
+
+Examples
+---
+
+```
+C_BLOB($void)
+
+$filePath:=System folder(Desktop)+Generate UUID
+
+BLOB TO DOCUMENT($filePath;$void)
+
+$error:=PATH Get access date ($filePath;$accessDate;$accessTime)
+$error:=PATH Get creation date ($filePath;$creationDate;$creationTime)
+$error:=PATH Get modification date ($filePath;$modificationDate;$modificationTime)
+
+$error:=PATH Set access date ($filePath;!2001-01-01!;?01:01:01?)
+$error:=PATH Set creation date ($filePath;!2001-01-01!;?01:01:01?)
+$error:=PATH Set modification date ($filePath;!2001-01-01!;?01:01:01?)
+
+$error:=PATH Get access date ($filePath;$accessDate;$accessTime)
+$error:=PATH Get creation date ($filePath;$creationDate;$creationTime)
+$error:=PATH Get modification date ($filePath;$modificationDate;$modificationTime)
+
+DELETE DOCUMENT($filePath)
+
+  //works for folders too
+
+$error:=PATH Get access date (Get 4D folder(Current resources folder);$accessDate;$accessTime)
+$error:=PATH Get creation date (Get 4D folder(Current resources folder);$creationDate;$creationTime)
+$error:=PATH Get modification date (Get 4D folder(Current resources folder);$modificationDate;$modificationTime)
+```
+
+```
+C_BLOB($void)
+
+$filePath:=System folder(Desktop)+Generate UUID
+
+BLOB TO DOCUMENT($filePath;$void)
+$error:=PATH Get hidden ($filePath;$hidden)
+$error:=PATH Set hidden ($filePath;1)
+$error:=PATH Get hidden ($filePath;$hidden)
+$error:=PATH Set hidden ($filePath;0)
+$error:=PATH Get hidden ($filePath;$hidden)
+DELETE DOCUMENT($filePath)
+
+$folderPath:=System folder(Desktop)+Generate UUID
+
+CREATE FOLDER($folderPath)
+$error:=PATH Get hidden ($folderPath;$hidden)
+$error:=PATH Set hidden ($folderPath;1)
+$error:=PATH Get hidden ($folderPath;$hidden)
+$error:=PATH Set hidden ($folderPath;0)
+$error:=PATH Get hidden ($folderPath;$hidden)
+DELETE FOLDER($folderPath)
+```
