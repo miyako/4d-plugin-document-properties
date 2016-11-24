@@ -3,7 +3,7 @@
 
 Commands to get/set folder/file dates, get/set the hidden attribute.
 
-Unlike the native commands, works on folders too.
+Works on folders too.
 
 ###Platform
 
