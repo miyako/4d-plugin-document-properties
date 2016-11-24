@@ -21,6 +21,10 @@ Works on folders too.
 
 [GET DOCUMENT PROPERTIES](http://doc.4d.com/4Dv16/4D/16/GET-DOCUMENT-PROPERTIES.301-3036712.en.html)
 
+* Similar Projects
+
+https://github.com/miyako/4d-plugin-packages
+
 Commands
 ---
 
