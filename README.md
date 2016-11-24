@@ -18,14 +18,13 @@ Commands to get/set folder/file dates, get/set the hidden attribute.
 Commands
 ---
 
-```c
-// --- Files and Folders
-PATH_Get_creation_date
-PATH_Set_modification_date
-PATH_Get_modification_date
-PATH_Set_creation_date
-PATH_Get_access_date
-PATH_Set_access_date
-PATH_Get_hidden
-PATH_Set_hidden
+```
+PATH Get creation date
+PATH Set modification date
+PATH Get modification date
+PATH Set creation date
+PATH Get access date
+PATH Set access date
+PATH Get hidden
+PATH Set hidden
 ```
