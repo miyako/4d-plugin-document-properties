@@ -100,7 +100,7 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			34HTS+gHuPBEeFopCTVK+uHmCCg=
+			tl6bDss4GroGPzzs+VRs1Wfvx9k=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -112,15 +112,6 @@
 	</dict>
 	<key>files2</key>
 	<dict>
-		<key>MacOS/Document Properties.html</key>
-		<dict>
-			<key>cdhash</key>
-			<data>
-			cCOAMyvEYhmFLUhO6nOOp8ndwjk=
-			</data>
-			<key>requirement</key>
-			<string>identifier "Document Properties" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = Y69CWUC25B</string>
-		</dict>
 		<key>QuickLook/Thumbnail.png</key>
 		<dict>
 			<key>hash</key>
@@ -389,11 +380,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			34HTS+gHuPBEeFopCTVK+uHmCCg=
+			tl6bDss4GroGPzzs+VRs1Wfvx9k=
 			</data>
 			<key>hash2</key>
 			<data>
-			f1F/Bbj6O87Kk6RqQq1BRAXQdezYfZPiLcuDpnTgRWA=
+			/Cv9x/kd+xWX8f4xzliKsm+ntRSDsMqk/heT0m+D81E=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -420,17 +411,6 @@
 			hDJWpGZmKszsA8LA3LDJIgtizMaZzb4vT72zUkQ+J4M=
 			</data>
 		</dict>
-		<key>Windows/Document Properties.html</key>
-		<dict>
-			<key>hash</key>
-			<data>
-			3f3hE90+GMuzyHmK9RVQvLK+Zs8=
-			</data>
-			<key>hash2</key>
-			<data>
-			EKLRdLPtg+PsdxOrCPdnhlHZLbWCJYLapu/sbQTYgHg=
-			</data>
-		</dict>
 		<key>Windows64/Document Properties.4DX</key>
 		<dict>
 			<key>hash</key>
@@ -442,22 +422,11 @@
 			3j6hLdZxHvGMNLQGU4HDwk70YFxigBYWXFwy0mlmQKg=
 			</data>
 		</dict>
-		<key>Windows64/Document Properties.html</key>
-		<dict>
-			<key>hash</key>
-			<data>
-			3f3hE90+GMuzyHmK9RVQvLK+Zs8=
-			</data>
-			<key>hash2</key>
-			<data>
-			EKLRdLPtg+PsdxOrCPdnhlHZLbWCJYLapu/sbQTYgHg=
-			</data>
-		</dict>
 		<key>manifest.json</key>
 		<dict>
 			<key>cdhash</key>
 			<data>
-			QT1EpJLn/O6gD+dPo9TuZO1YJIQ=
+			sGHluzgPmUQsGU2P+sg3RNCHLfs=
 			</data>
 			<key>requirement</key>
 			<string>identifier manifest and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = Y69CWUC25B</string>

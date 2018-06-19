@@ -1,1 +1,46 @@
-﻿{"name":"Document Properties","id":20000,"commands":[{"theme":"Files and Folders","syntax":"PATH Get creation date(&T;&D;&H):L"},{"theme":"Files and Folders","syntax":"PATH Set modification date(&T;&D;&H):L"},{"theme":"Files and Folders","syntax":"PATH Get modification date(&T;&D;&H):L"},{"theme":"Files and Folders","syntax":"PATH Set creation date(&T;&D;&H):L"},{"theme":"Files and Folders","syntax":"PATH Get access date(&T;&D;&H):L"},{"theme":"Files and Folders","syntax":"PATH Set access date(&T;&D;&H):L"},{"theme":"Files and Folders","syntax":"PATH Get hidden(&T;&L):L"},{"theme":"Files and Folders","syntax":"PATH Set hidden(&T;&L):L"}]}
+﻿{
+	"name": "Document Properties",
+	"id": 20000,
+	"commands": [
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Get creation date(&T;&D;&H):L",
+							 "threadSafe": true
+							 },
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Set modification date(&T;&D;&H):L",
+							 "threadSafe": true
+							 },
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Get modification date(&T;&D;&H):L",
+							 "threadSafe": true
+							 },
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Set creation date(&T;&D;&H):L",
+							 "threadSafe": true
+							 },
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Get access date(&T;&D;&H):L",
+							 "threadSafe": true
+							 },
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Set access date(&T;&D;&H):L",
+							 "threadSafe": true
+							 },
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Get hidden(&T;&L):L",
+							 "threadSafe": true
+							 },
+							 {
+							 "theme": "Files and Folders",
+							 "syntax": "PATH Set hidden(&T;&L):L",
+							 "threadSafe": true
+							 }
+							 ]
+}
