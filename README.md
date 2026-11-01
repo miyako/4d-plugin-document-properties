@@ -13,7 +13,7 @@ Document Properties is a 4D plugin that reads and sets the creation, modificatio
 | [`PATH Get hidden`](#path-get-hidden) | `Longint` | Read the hidden attribute |
 | [`PATH Set hidden`](#path-set-hidden) | `Longint` | Set or clear the hidden attribute |
 
-**Platforms:** macOS 11+ (Universal: Apple silicon and Intel), Windows 64-bit
+**Platforms:** macOS 10.13+ (Universal: Apple silicon and Intel), Windows 64-bit
 
 ---
 
