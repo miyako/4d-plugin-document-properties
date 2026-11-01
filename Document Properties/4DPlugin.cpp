@@ -12,332 +12,331 @@
 #include "4DPluginAPI.h"
 #include "4DPlugin.h"
 
+typedef struct
+{
+	uint16_t year;
+	uint16_t month;
+	uint16_t day;
+	uint16_t hour;
+	uint16_t minute;
+	uint16_t second;
+
+} PathDateTime;
+
+//rejects the null date, out-of-range months/days and times outside 00:00:00-23:59:59
+//(C_TIME::getHourMinuteSecond stores hours in an unsigned char, so read the seconds directly)
+static bool _PathDateTimeFromParams(C_DATE &fDate, C_TIME &fTime, PathDateTime &dt)
+{
+	fDate.getYearMonthDay(&dt.year, &dt.month, &dt.day);
+
+	uint32_t seconds = fTime.getSeconds();
+
+	if((dt.month < 1) || (dt.month > 12) || (dt.day < 1) || (dt.day > 31) || (seconds >= 86400))
+		return false;
+
+	dt.hour = seconds / 3600;
+	dt.minute = (seconds % 3600) / 60;
+	dt.second = seconds % 60;
+
+	return true;
+}
+
+static void _PathDateTimeToParams(const PathDateTime &dt, C_DATE &fDate, C_TIME &fTime)
+{
+	fDate.setYearMonthDay(dt.year, dt.month, dt.day);
+	fTime.setSeconds((dt.hour * 3600) + (dt.minute * 60) + dt.second);
+}
+
 #if VERSIONMAC
-time_t _GetUnixTime(C_DATE &fDate, C_TIME &fTime)
+static int _C_TEXTGetFileSystemPath(C_TEXT &pathString, char *buf, size_t size)
 {
-	time_t unixTime = 0;
-	
-	UInt16 year;
-	UInt16 month;
-	UInt16 day;
-	
-	fDate.getYearMonthDay(&year, &month, &day);
-	
-	UInt8 hour;
-	UInt8 minute;
-	UInt8 second;
-	
-	fTime.getHourMinuteSecond(&hour, &minute, &second);
-	
-	CFGregorianDate gregDate;
-	gregDate.year = year;
-	gregDate.month = month;
-	gregDate.day = day;
-	gregDate.hour = hour;
-	gregDate.minute = minute;
-	gregDate.second = second;
-	
-	NSDate *nDate = (NSDate *)CFDateCreate(kCFAllocatorDefault, CFGregorianDateGetAbsoluteTime(gregDate, (CFTimeZoneRef)[NSTimeZone localTimeZone]));
-	
-	unixTime = [nDate timeIntervalSince1970];
-	
-	[nDate release];
-	
-	return unixTime;
-}
+	int errorCode = 0;
 
-void _NSDateGetDateTime(NSDate *nDate, C_DATE &fDate, C_TIME &fTime)
-{
-	if(nDate){
-		
-		NSDate *lDate = [[NSDate alloc]initWithTimeInterval:[[NSTimeZone defaultTimeZone]secondsFromGMTForDate:nDate]sinceDate:nDate];
-		
-		NSString *description = [lDate description];
-		
-		if([description length] == 25)
-		{
-			fDate.setYearMonthDay(
-														[[description substringWithRange:NSMakeRange(0,4)]integerValue],
-														[[description substringWithRange:NSMakeRange(5,2)]integerValue],
-														[[description substringWithRange:NSMakeRange(8,2)]integerValue]
-														);
-			
-			int hour = [[description substringWithRange:NSMakeRange(11,2)]integerValue];
-			int minute = [[description substringWithRange:NSMakeRange(14,2)]integerValue];
-			int second = [[description substringWithRange:NSMakeRange(17,2)]integerValue];
-			
-			fTime.setSeconds(second + (minute * 60) + (hour * 3600));
-			
-		}
-		[lDate release];
-	}
-}
+	NSString *path = pathString.copyPath();
 
-NSInteger _C_TEXTGetPathDate(C_TEXT &pathString, NSString *key, C_DATE &fDate, C_TIME &fTime){
-	
-	NSInteger errorCode = 0;
-	
-	if(key){
-		
-		NSFileManager *defaultManager = [[NSFileManager alloc]init];
-		NSString *path = pathString.copyPath();
-		
-		NSDictionary *attributes = nil;
-		NSError *error = nil;
-		
-		attributes = [defaultManager attributesOfItemAtPath:path error:&error];
-		
-		if(attributes){
-			
-			if([key isEqualToString:NSFileCreationDate])
-				_NSDateGetDateTime([attributes fileCreationDate], fDate, fTime);
-			
-			if([key isEqualToString:NSFileModificationDate])
-				_NSDateGetDateTime([attributes fileModificationDate], fDate, fTime);
-			
-			if([key isEqualToString:NSFileAccessDate]){
-				
-				struct stat output;
-				int ret = stat([path UTF8String], &output);
-				
-				if(!ret){
-					_NSDateGetDateTime([NSDate dateWithTimeIntervalSince1970:output.st_atime], fDate, fTime);
-				}else{
-					errorCode = errno;
-				}
-				
-			}
-			
-		}else{
-			errorCode = [error code];
-		}
-		
+	if(!path){
+		errorCode = EINVAL;
+	}else{
+		if(!CFStringGetFileSystemRepresentation((CFStringRef)path, buf, (CFIndex)size))
+			errorCode = ENAMETOOLONG;
 		[path release];
-		[defaultManager release];
-		
 	}
-	
+
 	return errorCode;
 }
 
-NSInteger _C_TEXTSetPathDate(C_TEXT &pathString, NSString *key, C_DATE &fDate, C_TIME &fTime){
-	
-	NSInteger errorCode = 0;
-	
-	if(key){
-		
-		NSFileManager *defaultManager = [[NSFileManager alloc]init];
-		NSString *path = pathString.copyPath();
-		
-		if([key isEqualToString:NSFileAccessDate]){
-			
-			struct stat output;
-			int ret = stat([path UTF8String], &output);
-			
-			if(!ret){
-				
-				timeval times[2];
-				
-				times[0].tv_sec = _GetUnixTime(fDate, fTime);
-				times[1].tv_sec = output.st_mtimespec.tv_sec;
-				
-				if(utimes([path UTF8String], times))
-					errorCode = errno;
-				
-			}else{
-				errorCode = errno;
+//stat, setattrlist and chflags all follow symbolic links, as CreateFile does on Windows
+static int _C_TEXTGetPathDate(C_TEXT &pathString, PathDateKind kind, C_DATE &fDate, C_TIME &fTime)
+{
+	char path[PATH_MAX];
+
+	int errorCode = _C_TEXTGetFileSystemPath(pathString, path, sizeof(path));
+
+	if(!errorCode){
+
+		struct stat output;
+
+		if(!stat(path, &output)){
+
+			time_t t;
+
+			switch (kind){
+				case kPathCreationDate:
+					t = output.st_birthtimespec.tv_sec;
+					break;
+				case kPathModificationDate:
+					t = output.st_mtimespec.tv_sec;
+					break;
+				case kPathAccessDate:
+				default:
+					t = output.st_atimespec.tv_sec;
+					break;
 			}
-			
+
+			struct tm local;
+
+			if(localtime_r(&t, &local)){
+
+				PathDateTime dt;
+				dt.year = local.tm_year + 1900;
+				dt.month = local.tm_mon + 1;
+				dt.day = local.tm_mday;
+				dt.hour = local.tm_hour;
+				dt.minute = local.tm_min;
+				dt.second = local.tm_sec;
+
+				_PathDateTimeToParams(dt, fDate, fTime);
+
+			}else{
+				errorCode = EOVERFLOW;
+			}
+
 		}else{
-			
-			UInt16 year;
-			UInt16 month;
-			UInt16 day;
-			
-			fDate.getYearMonthDay(&year, &month, &day);
-			
-			UInt8 hour;
-			UInt8 minute;
-			UInt8 second;
-			
-			fTime.getHourMinuteSecond(&hour, &minute, &second);
-			
-			CFGregorianDate gregDate;
-			gregDate.year = year;
-			gregDate.month = month;
-			gregDate.day = day;
-			gregDate.hour = hour;
-			gregDate.minute = minute;
-			gregDate.second = second;
-			
-			NSDate *nDate = (NSDate *)CFDateCreate(kCFAllocatorDefault, CFGregorianDateGetAbsoluteTime(gregDate, (CFTimeZoneRef)[NSTimeZone localTimeZone]));
-			
-			NSDictionary *attributes = [NSDictionary dictionaryWithObject:nDate forKey:key];
-			
-			NSError *error = nil;
-			
-			if(![defaultManager setAttributes:attributes ofItemAtPath:path error:&error])
-				errorCode = [error code];
-			
-			[nDate release];
+			errorCode = errno;
 		}
-		
-		[path release];
-		[defaultManager release];
-		
+
 	}
-	
+
+	return errorCode;
+}
+
+static int _C_TEXTSetPathDate(C_TEXT &pathString, PathDateKind kind, C_DATE &fDate, C_TIME &fTime)
+{
+	PathDateTime dt;
+
+	if(!_PathDateTimeFromParams(fDate, fTime, dt))
+		return EINVAL;
+
+	struct tm local;
+	memset(&local, 0, sizeof(local));
+	local.tm_year = dt.year - 1900;
+	local.tm_mon = dt.month - 1;
+	local.tm_mday = dt.day;
+	local.tm_hour = dt.hour;
+	local.tm_min = dt.minute;
+	local.tm_sec = dt.second;
+	local.tm_isdst = -1;//let mktime apply the DST rule in effect on that date
+
+	time_t t = mktime(&local);
+
+	//mktime normalises invalid dates (e.g. Feb 31 to Mar 3); reject them
+	if((local.tm_year != dt.year - 1900) || (local.tm_mon != dt.month - 1) || (local.tm_mday != dt.day))
+		return EINVAL;
+
+	char path[PATH_MAX];
+
+	int errorCode = _C_TEXTGetFileSystemPath(pathString, path, sizeof(path));
+
+	if(!errorCode){
+
+		//setattrlist changes only the requested date, leaving the others (and their nanoseconds) intact
+		struct attrlist attrList;
+		memset(&attrList, 0, sizeof(attrList));
+		attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
+
+		switch (kind){
+			case kPathCreationDate:
+				attrList.commonattr = ATTR_CMN_CRTIME;
+				break;
+			case kPathModificationDate:
+				attrList.commonattr = ATTR_CMN_MODTIME;
+				break;
+			case kPathAccessDate:
+			default:
+				attrList.commonattr = ATTR_CMN_ACCTIME;
+				break;
+		}
+
+		struct timespec ts;
+		ts.tv_sec = t;
+		ts.tv_nsec = 0;
+
+		if(setattrlist(path, &attrList, &ts, sizeof(ts), 0))
+			errorCode = errno;
+
+	}
+
 	return errorCode;
 }
 #endif
 
 #if VERSIONWIN
-
-typedef enum
+//FILE_READ_ATTRIBUTES/FILE_WRITE_ATTRIBUTES are not subject to share-mode checks,
+//so this works on read-only files and on files other processes (or 4D) have open
+static HANDLE _C_TEXTOpenPath(C_TEXT &pathString, DWORD access)
 {
-	NSFileCreationDate = 0,
-	NSFileModificationDate,
-	NSFileAccessDate
-	
-} NSFileDate;
-
-unsigned int _C_TEXTGetPathDate(C_TEXT &pathString, NSFileDate key, C_DATE &fDate, C_TIME &fTime)
-{
-	unsigned int errorCode = 0;
-	
-	HANDLE hFile = CreateFile((LPCTSTR)pathString.getUTF16StringPtr(),
-														GENERIC_READ,
-														FILE_SHARE_READ | FILE_SHARE_WRITE,
-														0,
-														OPEN_EXISTING,
-														FILE_FLAG_BACKUP_SEMANTICS,
-														0);
-	
-	if(hFile != INVALID_HANDLE_VALUE){
-		
-		FILETIME creationTime, lastWriteTime, lastAccessTime;
-		
-		if(GetFileTime(hFile, &creationTime, &lastWriteTime, &lastAccessTime)){
-			
-			FILETIME fileTime;
-			
-			switch (key){
-				case NSFileCreationDate:
-					fileTime = creationTime;
-					break;
-				case NSFileModificationDate:
-					fileTime = lastWriteTime;
-					break;
-				case NSFileAccessDate:
-					fileTime = lastAccessTime;
-					break;
-			}
-			
-			FILETIME localFileTime;
-			SYSTEMTIME systemTime;
-			
-			if(FileTimeToLocalFileTime(&fileTime, &localFileTime)){
-				
-				if(FileTimeToSystemTime(&localFileTime, &systemTime)){
-					
-					fDate.setYearMonthDay(systemTime.wYear, systemTime.wMonth, systemTime.wDay);
-					fTime.setHourMinuteSecond((unsigned char)systemTime.wHour, (unsigned char)systemTime.wMinute, (unsigned char)systemTime.wSecond);
-					
-				}else{
-					errorCode = GetLastError();
-				}
-				
-			}else{
-				errorCode = GetLastError();
-			}
-			
-		}else{
-			errorCode = GetLastError();
-		}
-		
-		CloseHandle(hFile);
-		
-	}
-	
-	return errorCode;
+	return CreateFileW((LPCWSTR)pathString.getUTF16StringPtr(),
+										 access,
+										 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+										 NULL,
+										 OPEN_EXISTING,
+										 FILE_FLAG_BACKUP_SEMANTICS,
+										 NULL);
 }
 
-unsigned int _C_TEXTSetPathDate(C_TEXT &pathString, NSFileDate key, C_DATE &fDate, C_TIME &fTime)
+static unsigned int _C_TEXTGetPathDate(C_TEXT &pathString, PathDateKind kind, C_DATE &fDate, C_TIME &fTime)
 {
+	HANDLE hFile = _C_TEXTOpenPath(pathString, FILE_READ_ATTRIBUTES);
+
+	if(hFile == INVALID_HANDLE_VALUE)
+		return GetLastError();
+
 	unsigned int errorCode = 0;
-	
-	HANDLE hFile = CreateFile((LPCTSTR)pathString.getUTF16StringPtr(),
-														GENERIC_WRITE,
-														FILE_SHARE_READ | FILE_SHARE_WRITE,
-														0,
-														OPEN_EXISTING,
-														FILE_FLAG_BACKUP_SEMANTICS,
-														0);
-	
-	if(hFile != INVALID_HANDLE_VALUE){
-		
-		FILETIME localFileTime, fileTime;
-		SYSTEMTIME systemTime;
-		
-		uint16_t year = 0;
-		uint16_t month = 0;
-		uint16_t day = 0;
-		
-		fDate.getYearMonthDay(&year, &month, &day);
-		
-		systemTime.wYear = year;
-		systemTime.wMonth = month;
-		systemTime.wDay = day;
-		
-		unsigned char hour = 0;
-		unsigned char minute = 0;
-		unsigned char second = 0;
-		
-		fTime.getHourMinuteSecond(&hour, &minute, &second);
-		
-		systemTime.wHour = hour;
-		systemTime.wMinute = minute;
-		systemTime.wSecond = second;
-		
-		systemTime.wMilliseconds  = 0;
-		systemTime.wDayOfWeek = 0;
-		
-		if(SystemTimeToFileTime(&systemTime, &localFileTime)){
-			
-			if(LocalFileTimeToFileTime(&localFileTime, &fileTime)){
-				
-				switch (key){
-					case NSFileCreationDate:
-						if(!SetFileTime(hFile, &fileTime, NULL, NULL))
-							errorCode = GetLastError();
-						break;
-					case NSFileModificationDate:
-						if(!SetFileTime(hFile, NULL, NULL, &fileTime))
-							errorCode = GetLastError();
-						break;
-					case NSFileAccessDate:
-						if(!SetFileTime(hFile, NULL, &fileTime, NULL))
-							errorCode = GetLastError();
-						break;
-				}
-				
-			}else{
-				errorCode = GetLastError();
-			}
-			
+
+	FILETIME creationTime, lastAccessTime, lastWriteTime;
+
+	if(GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)){
+
+		FILETIME fileTime;
+
+		switch (kind){
+			case kPathCreationDate:
+				fileTime = creationTime;
+				break;
+			case kPathModificationDate:
+				fileTime = lastWriteTime;
+				break;
+			case kPathAccessDate:
+			default:
+				fileTime = lastAccessTime;
+				break;
+		}
+
+		SYSTEMTIME utcTime, localTime;
+
+		//convert with the DST rule in effect on that date, not today's bias
+		if(FileTimeToSystemTime(&fileTime, &utcTime)
+			 && SystemTimeToTzSpecificLocalTime(NULL, &utcTime, &localTime)){
+
+			PathDateTime dt;
+			dt.year = localTime.wYear;
+			dt.month = localTime.wMonth;
+			dt.day = localTime.wDay;
+			dt.hour = localTime.wHour;
+			dt.minute = localTime.wMinute;
+			dt.second = localTime.wSecond;
+
+			_PathDateTimeToParams(dt, fDate, fTime);
+
 		}else{
 			errorCode = GetLastError();
 		}
-		
-		CloseHandle(hFile);
-		
+
 	}else{
 		errorCode = GetLastError();
 	}
-	
+
+	CloseHandle(hFile);
+
+	return errorCode;
+}
+
+static unsigned int _C_TEXTSetPathDate(C_TEXT &pathString, PathDateKind kind, C_DATE &fDate, C_TIME &fTime)
+{
+	PathDateTime dt;
+
+	if(!_PathDateTimeFromParams(fDate, fTime, dt))
+		return ERROR_INVALID_PARAMETER;
+
+	SYSTEMTIME localTime, utcTime;
+	localTime.wYear = dt.year;
+	localTime.wMonth = dt.month;
+	localTime.wDay = dt.day;
+	localTime.wHour = dt.hour;
+	localTime.wMinute = dt.minute;
+	localTime.wSecond = dt.second;
+	localTime.wMilliseconds = 0;
+	localTime.wDayOfWeek = 0;
+
+	FILETIME fileTime;
+
+	//convert with the DST rule in effect on that date, not today's bias
+	if(!TzSpecificLocalTimeToSystemTime(NULL, &localTime, &utcTime)
+		 || !SystemTimeToFileTime(&utcTime, &fileTime))
+		return GetLastError();
+
+	HANDLE hFile = _C_TEXTOpenPath(pathString, FILE_WRITE_ATTRIBUTES);
+
+	if(hFile == INVALID_HANDLE_VALUE)
+		return GetLastError();
+
+	unsigned int errorCode = 0;
+
+	BOOL success;
+
+	switch (kind){
+		case kPathCreationDate:
+			success = SetFileTime(hFile, &fileTime, NULL, NULL);
+			break;
+		case kPathModificationDate:
+			success = SetFileTime(hFile, NULL, NULL, &fileTime);
+			break;
+		case kPathAccessDate:
+		default:
+			success = SetFileTime(hFile, NULL, &fileTime, NULL);
+			break;
+	}
+
+	if(!success)
+		errorCode = GetLastError();
+
+	CloseHandle(hFile);
+
 	return errorCode;
 }
 #endif
+
+static void _PATH_Get_date(sLONG_PTR *pResult, PackagePtr pParams, PathDateKind kind)
+{
+	C_TEXT Param1;
+	C_DATE Param2;
+	C_TIME Param3;
+	C_LONGINT returnValue;
+
+	Param1.fromParamAtIndex(pParams, 1);
+
+	returnValue.setIntValue(_C_TEXTGetPathDate(Param1, kind, Param2, Param3));
+
+	Param2.toParamAtIndex(pParams, 2);
+	Param3.toParamAtIndex(pParams, 3);
+	returnValue.setReturn(pResult);
+}
+
+static void _PATH_Set_date(sLONG_PTR *pResult, PackagePtr pParams, PathDateKind kind)
+{
+	C_TEXT Param1;
+	C_DATE Param2;
+	C_TIME Param3;
+	C_LONGINT returnValue;
+
+	Param1.fromParamAtIndex(pParams, 1);
+	Param2.fromParamAtIndex(pParams, 2);
+	Param3.fromParamAtIndex(pParams, 3);
+
+	returnValue.setIntValue(_C_TEXTSetPathDate(Param1, kind, Param2, Param3));
+
+	returnValue.setReturn(pResult);
+}
 
 #pragma mark -
 
@@ -349,7 +348,7 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params)
 		sLONG_PTR *pResult = (sLONG_PTR *)params->fResult;
 		PackagePtr pParams = (PackagePtr)params->fParameters;
 
-		CommandDispatcher(pProcNum, pResult, pParams); 
+		CommandDispatcher(pProcNum, pResult, pParams);
 	}
 	catch(...)
 	{
@@ -404,122 +403,32 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 
 void PATH_Get_creation_date(sLONG_PTR *pResult, PackagePtr pParams)
 {
-	C_TEXT Param1;
-	C_DATE Param2;
-	C_TIME Param3;
-	C_LONGINT returnValue;
-	
-	Param1.fromParamAtIndex(pParams, 1);
-	
-#if VERSIONMAC
-	returnValue.setIntValue(_C_TEXTGetPathDate(Param1, NSFileCreationDate, Param2, Param3));
-#else
-	returnValue.setIntValue(_C_TEXTGetPathDate(Param1, NSFileCreationDate, Param2, Param3));
-#endif
-	
-	Param2.toParamAtIndex(pParams, 2);
-	Param3.toParamAtIndex(pParams, 3);
-	returnValue.setReturn(pResult);
+	_PATH_Get_date(pResult, pParams, kPathCreationDate);
 }
 
 void PATH_Set_modification_date(sLONG_PTR *pResult, PackagePtr pParams)
 {
-	C_TEXT Param1;
-	C_DATE Param2;
-	C_TIME Param3;
-	C_LONGINT returnValue;
-	
-	Param1.fromParamAtIndex(pParams, 1);
-	Param2.fromParamAtIndex(pParams, 2);
-	Param3.fromParamAtIndex(pParams, 3);
-	
-#if VERSIONMAC
-	returnValue.setIntValue(_C_TEXTSetPathDate(Param1, NSFileModificationDate, Param2, Param3));
-#else
-	returnValue.setIntValue(_C_TEXTSetPathDate(Param1, NSFileModificationDate, Param2, Param3));
-#endif
-	
-	returnValue.setReturn(pResult);
+	_PATH_Set_date(pResult, pParams, kPathModificationDate);
 }
 
 void PATH_Get_modification_date(sLONG_PTR *pResult, PackagePtr pParams)
 {
-	C_TEXT Param1;
-	C_DATE Param2;
-	C_TIME Param3;
-	C_LONGINT returnValue;
-	
-	Param1.fromParamAtIndex(pParams, 1);
-	
-#if VERSIONMAC
-	returnValue.setIntValue(_C_TEXTGetPathDate(Param1, NSFileModificationDate, Param2, Param3));
-#else
-	returnValue.setIntValue(_C_TEXTGetPathDate(Param1, NSFileModificationDate, Param2, Param3));
-#endif
-	
-	Param2.toParamAtIndex(pParams, 2);
-	Param3.toParamAtIndex(pParams, 3);
-	returnValue.setReturn(pResult);
+	_PATH_Get_date(pResult, pParams, kPathModificationDate);
 }
 
 void PATH_Set_creation_date(sLONG_PTR *pResult, PackagePtr pParams)
 {
-	C_TEXT Param1;
-	C_DATE Param2;
-	C_TIME Param3;
-	C_LONGINT returnValue;
-	
-	Param1.fromParamAtIndex(pParams, 1);
-	Param2.fromParamAtIndex(pParams, 2);
-	Param3.fromParamAtIndex(pParams, 3);
-	
-#if VERSIONMAC
-	returnValue.setIntValue(_C_TEXTSetPathDate(Param1, NSFileCreationDate, Param2, Param3));
-#else
-	returnValue.setIntValue(_C_TEXTSetPathDate(Param1, NSFileCreationDate, Param2, Param3));
-#endif
-	
-	returnValue.setReturn(pResult);
+	_PATH_Set_date(pResult, pParams, kPathCreationDate);
 }
 
 void PATH_Get_access_date(sLONG_PTR *pResult, PackagePtr pParams)
 {
-	C_TEXT Param1;
-	C_DATE Param2;
-	C_TIME Param3;
-	C_LONGINT returnValue;
-	
-	Param1.fromParamAtIndex(pParams, 1);
-	
-#if VERSIONMAC
-	returnValue.setIntValue(_C_TEXTGetPathDate(Param1, NSFileAccessDate, Param2, Param3));
-#else
-	returnValue.setIntValue(_C_TEXTGetPathDate(Param1, NSFileAccessDate, Param2, Param3));
-#endif
-	
-	Param2.toParamAtIndex(pParams, 2);
-	Param3.toParamAtIndex(pParams, 3);
-	returnValue.setReturn(pResult);
+	_PATH_Get_date(pResult, pParams, kPathAccessDate);
 }
 
 void PATH_Set_access_date(sLONG_PTR *pResult, PackagePtr pParams)
 {
-	C_TEXT Param1;
-	C_DATE Param2;
-	C_TIME Param3;
-	C_LONGINT returnValue;
-	
-	Param1.fromParamAtIndex(pParams, 1);
-	Param2.fromParamAtIndex(pParams, 2);
-	Param3.fromParamAtIndex(pParams, 3);
-	
-#if VERSIONMAC
-	returnValue.setIntValue(_C_TEXTSetPathDate(Param1, NSFileAccessDate, Param2, Param3));
-#else
-	returnValue.setIntValue(_C_TEXTSetPathDate(Param1, NSFileAccessDate, Param2, Param3));
-#endif
-	
-	returnValue.setReturn(pResult);
+	_PATH_Set_date(pResult, pParams, kPathAccessDate);
 }
 
 void PATH_Get_hidden(sLONG_PTR *pResult, PackagePtr pParams)
@@ -527,31 +436,36 @@ void PATH_Get_hidden(sLONG_PTR *pResult, PackagePtr pParams)
 	C_TEXT Param1;
 	C_LONGINT Param2;
 	C_LONGINT returnValue;
-	
+
 	Param1.fromParamAtIndex(pParams, 1);
-	
+
 #if VERSIONMAC
-	NSString *path = Param1.copyPath();
-	
-	struct stat output;
-	int ret = stat([path UTF8String], &output);
-	
-	if(!ret){
-		Param2.setIntValue((output.st_flags & UF_HIDDEN) != 0);
-	}else{
-		returnValue.setIntValue(errno);
+	char path[PATH_MAX];
+
+	int errorCode = _C_TEXTGetFileSystemPath(Param1, path, sizeof(path));
+
+	if(!errorCode){
+
+		struct stat output;
+
+		if(!stat(path, &output)){
+			Param2.setIntValue((output.st_flags & UF_HIDDEN) != 0);
+		}else{
+			errorCode = errno;
+		}
+
 	}
-	
-	[path release];
+
+	returnValue.setIntValue(errorCode);
 #else
-	DWORD attributes = GetFileAttributes((LPCTSTR)Param1.getUTF16StringPtr());
+	DWORD attributes = GetFileAttributesW((LPCWSTR)Param1.getUTF16StringPtr());
 	if(attributes != INVALID_FILE_ATTRIBUTES){
 		Param2.setIntValue((attributes & FILE_ATTRIBUTE_HIDDEN) != 0);
 	}else{
 		returnValue.setIntValue(GetLastError());
 	}
 #endif
-	
+
 	Param2.toParamAtIndex(pParams, 2);
 	returnValue.setReturn(pResult);
 }
@@ -561,48 +475,51 @@ void PATH_Set_hidden(sLONG_PTR *pResult, PackagePtr pParams)
 	C_TEXT Param1;
 	C_LONGINT Param2;
 	C_LONGINT returnValue;
-	
+
 	Param1.fromParamAtIndex(pParams, 1);
 	Param2.fromParamAtIndex(pParams, 2);
-	
+
 #if VERSIONMAC
-	NSString *path = Param1.copyPath();
-	
-	struct stat output;
-	int ret = stat([path UTF8String], &output);
-	
-	if(!ret){
-		
-		if(Param2.getIntValue()){
-			if(chflags([path UTF8String], output.st_flags | UF_HIDDEN))
-				returnValue.setIntValue(errno);
+	char path[PATH_MAX];
+
+	int errorCode = _C_TEXTGetFileSystemPath(Param1, path, sizeof(path));
+
+	if(!errorCode){
+
+		struct stat output;
+
+		if(!stat(path, &output)){
+
+			u_int32_t flags = Param2.getIntValue() ? (output.st_flags | UF_HIDDEN) : (output.st_flags & ~(UF_HIDDEN));
+
+			if(chflags(path, flags))
+				errorCode = errno;
+
 		}else{
-			if(chflags([path UTF8String], output.st_flags & ~(UF_HIDDEN)))
-				returnValue.setIntValue(errno);
+			errorCode = errno;
 		}
-		
-	}else{
-		returnValue.setIntValue(errno);
+
 	}
-	
-	[path release];
+
+	returnValue.setIntValue(errorCode);
 #else
-	DWORD attributes = GetFileAttributes((LPCTSTR)Param1.getUTF16StringPtr());
+	LPCWSTR path = (LPCWSTR)Param1.getUTF16StringPtr();
+	DWORD attributes = GetFileAttributesW(path);
 	if(attributes != INVALID_FILE_ATTRIBUTES){
-		
+
 		if(Param2.getIntValue()){
-			if(!SetFileAttributes((LPCTSTR)Param1.getUTF16StringPtr(), attributes | FILE_ATTRIBUTE_HIDDEN))
+			if(!SetFileAttributesW(path, attributes | FILE_ATTRIBUTE_HIDDEN))
 				returnValue.setIntValue(GetLastError());
 		}else{
-			if(!SetFileAttributes((LPCTSTR)Param1.getUTF16StringPtr(), attributes & ~(FILE_ATTRIBUTE_HIDDEN)))
+			if(!SetFileAttributesW(path, attributes & ~(FILE_ATTRIBUTE_HIDDEN)))
 				returnValue.setIntValue(GetLastError());
 		}
-		
+
 	}else{
 		returnValue.setIntValue(GetLastError());
 	}
 #endif
-	
+
 	returnValue.setReturn(pResult);
 }
 

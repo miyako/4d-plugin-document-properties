@@ -10,9 +10,21 @@
 
 #if VERSIONMAC
 #include <sys/stat.h>
-#include <sys/time.h>
-#define NSFileAccessDate @"NSFileAccessDate"
+#include <sys/attr.h>
+#include <unistd.h>
+#include <limits.h>
+#include <string.h>
+#include <errno.h>
+#include <time.h>
 #endif
+
+typedef enum
+{
+	kPathCreationDate = 0,
+	kPathModificationDate,
+	kPathAccessDate
+
+} PathDateKind;
 
 // --- Files and Folders
 void PATH_Get_creation_date(sLONG_PTR *pResult, PackagePtr pParams);
