@@ -1,4 +1,4 @@
-# Document Properties
+# 4d-plugin-document-properties
 
 Document Properties is a 4D plugin that reads and sets the creation, modification and last-access dates of files and folders, and reads and sets their hidden attribute. It works on folders as well as files. **On macOS** it calls `stat`, `setattrlist` and `chflags`. **On Windows** it calls `GetFileTime`/`SetFileTime` and `GetFileAttributesW`/`SetFileAttributesW`. Dates and times are exchanged as 4D `Date` and `Time` values in local time. Every command returns a `Longint` error code, which is `0` on success.
 
