@@ -356,7 +356,31 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params)
 	}
 }
 
+static void _CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pParams);
+
 void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pParams)
+{
+	//every command returns a longint error code; if one throws (only std::bad_alloc
+	//from the parameter classes is realistic), report it instead of returning 0
+	try
+	{
+		_CommandDispatcher(pProcNum, pResult, pParams);
+	}
+	catch(...)
+	{
+		if(pProcNum > 0){
+			C_LONGINT returnValue;
+#if VERSIONMAC
+			returnValue.setIntValue(ENOMEM);
+#else
+			returnValue.setIntValue(ERROR_NOT_ENOUGH_MEMORY);
+#endif
+			returnValue.setReturn(pResult);
+		}
+	}
+}
+
+static void _CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pParams)
 {
 	switch(pProcNum)
 	{
