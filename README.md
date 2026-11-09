@@ -15,6 +15,64 @@ Document Properties is a 4D plugin that reads and sets the creation, modificatio
 
 **Platforms:** macOS 10.13+ (Universal: Apple silicon and Intel), Windows 64-bit
 
+## Versioning and manual publication
+
+Run **Bump version** manually with `patch`, `minor` or `major` on the branch
+selected in Actions. It validates the immutable dispatch SHA and clean source,
+commits only source metadata, and nonforce-pushes only that explicit branch.
+It creates no tag and starts no Build. A mandatory executable pre-push guard
+checks the advertised old SHA against the selected SHA, and the new commit,
+parent and destination against the prepared update. Even a late branch advance,
+rewind, deletion or same-result update is rejected. Missing/nonexecutable guards
+fail closed. Both `push.followTags=false` and `--no-follow-tags` prevent unrelated
+annotated tags from following the push. If the branch moved, dispatch again on
+its new commit after review.
+
+Source authority is the strict `X.Y.Z` `MARKETING_VERSION` inherited from the
+three Xcode project configurations. The historical Bump header explicitly
+promised coordinated marketing/current versions; commit `8bd55a8` updated both,
+but `2b71438` updated only marketing and the source plist. This migration repairs
+the three stale `CURRENT_PROJECT_VERSION` settings and the localized source
+short/info strings to **the existing 2.1.0**, without a release increment.
+Future bumps validate and coordinate those settings, `Info.plist` version keys
+and `English.lproj/InfoPlist.strings`. Legitimate `$(...)`/`${...}` version
+references are retained; absent `CFBundleVersion` remains absent. Prebuilt
+bundles, 4D project data, `manifest.json` schema version, dependency metadata and
+localization counters are not version inputs and are not rewritten.
+
+Run **Build** separately on the desired source revision. It has only
+`workflow_dispatch`, zero typed inputs, and every checkout uses `github.sha`.
+There is no tag-push build or new default-branch-only restriction. Publication
+is serialized repo-wide across branches without cancelling a running build.
+Before native work, and again immediately after all required native/package/
+codesign/notary/staple gates, authenticated checks inspect remote tags and every
+page of releases, including drafts. Existing names, malformed responses,
+authentication/network errors and later-page failures stop publication.
+Only a complete successful no-match permits create-only publication: a new
+lightweight `vX.Y.Z` tag at the exact selected SHA, verified remotely, then a new
+non-draft/non-prerelease release with empty notes (the original notes policy).
+Assets are uploaded separately to that returned new release ID, with no
+overwrite: `Document Properties-X.Y.Z.zip` and `Document Properties-X.Y.Z.dmg`.
+Concurrent same-SHA and different-SHA tag creations both fail.
+
+**Recovery:** failures do not delete, update, roll back or retry remote state.
+A tag, release or previously uploaded asset may remain even if a response was
+lost or malformed. Inspect the run and retained remote state before taking any
+separate maintainer recovery action; rerunning the same version will refuse
+existing state. Do not assume a failed run left nothing published.
+
+The existing Windows x64 MSBuild/v143 and macOS universal build, bundled 4D API,
+resource/Rez phases, signing credentials and signing/notary/staple gates remain
+unchanged. This workflow migration does not modernize legacy native phases or
+prove hosted-runner SDK/tool compatibility. ZIP notarization and DMG
+notarization/stapling retain their original behavior; the ZIP is not stapled.
+No native/signing execution is part of the migration checks.
+
+Lifecycle checks (no native tools or signing needed):
+`python3 -m unittest discover -s .github/tests -v` and
+`actionlint .github/workflows/*.yml`. The suite uses live source-derived fixtures,
+mocked authenticated API pages and temporary real bare Git repositories for races.
+
 ---
 
 ## Requirements & platform notes
