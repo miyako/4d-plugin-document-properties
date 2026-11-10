@@ -75,6 +75,82 @@ mocked authenticated API pages and temporary real bare Git repositories for race
 
 ---
 
+## Native ownership maintenance
+
+Both native projects compile the bundled SDK and all 16 wrapper implementations,
+including the dormant picture and text-array wrappers. The eight exported
+commands currently use scalar `C_TEXT`, `C_DATE`, `C_TIME`, and `C_LONGINT` only.
+Both source and prebuilt-bundle manifests declare the same eight signatures;
+none declares a text array. Array capability metadata is not an ownership
+contract.
+
+The picture wrapper now gives each shallow-assigned command argument a single
+owner: arguments start Undefined where a setter immediately supplies content,
+and transferred strings are released by argument cleanup only. File-command
+pictures are retained before clearing their original argument owner, and
+`setBytes` releases its temporary picture after retaining it. Borrowed synchronous
+picture inputs remain detached before cleanup; returned pictures remain owning
+handoffs that callers must dispose. Charset conversion returns **bytes**, which
+`createCopy` converts to UTF-16 code units before constructing a string.
+
+Run the unsigned macOS regressions without building or signing a plugin bundle:
+
+```sh
+python3 .github/tests/test_native_ownership.py --baseline
+python3 .github/tests/test_native_ownership.py
+```
+
+The same harness compiles `4DPlugin.cpp`, every wrapper, and the **full unchanged**
+`4DPluginAPI.c`, substituting only the `gCall4D` engine boundary. It requires the
+immutable baseline `697c8694a9534914f6fc5a30466c64a944f4f01a` to fail named
+picture-path double-disposal, picture-owner leaks, and charset-length overread
+cases, then requires fixed sources to pass. ASan/UBSan cover actual source
+execution; alignment checks are excluded for the SDK's intentional packed ABI.
+LeakSanitizer is disabled on macOS, with explicit live string, handle and picture
+reference balances instead. Allocated and null empty strings, exact ASCII/BMP/
+supplementary UTF-16 contents, array replacement/shrink/clear/rejections, borrowed
+copies, independent output allocations and owning picture handoff survival are
+covered. The pull-request-only **Native ownership** workflow runs these checks
+and existing lifecycle tests with read-only permissions, no signing, packaging,
+artifact publication, tags or releases. The two publication workflows remain
+manual and unchanged.
+
+SDK provenance: this checkout imported `4DPluginAPI.c` in commit
+`7ad4c893c88c9048ec2f2a2f9be1d151a9ed38f2`; its SHA-256 is
+`355ee208ad6c61dcc68e8432546fc42484888211dd07ed8fa3fdb4440f3edbd8`.
+The header SHA-256 is
+`7391841f0046f9e822b65ca6b07cafb3565aecfb58f65be4e0661adf97b8c786`.
+The implementation's `v14` and headers' `v13` comments are not verified upstream
+release identities. The audit followed the canonical
+[`4dplugin` guidance](https://github.com/miyako/skills/blob/e6b492fcb81e5e1a7f7db723594b420e63bf6eb9/4d-skills/skills/4dplugin/SKILL.md),
+including merged guidance changes 69 and 71.
+
+In this SDK, accepted `PA_SetStringInArray` calls dispose the old element and
+shallow-transfer the input descriptor. Wrong type, null data, out-of-range index
+or null descriptor do not consume it; index zero is accepted. Array getters
+borrow. `ARRAY_TEXT` copies borrowed inputs to C++ strings and allocates an
+independent string for each normal output transfer; its existing transfer
+cleanup is correct and unchanged. `PA_SetStringVariable` and
+`PA_SetPictureVariable` shallow-assign without clearing old owners.
+`PA_GetPictureVariable` borrows; `PA_DuplicatePicture(..., 1)` retains.
+`PA_ReturnString`/`C_TEXT` use the engine-backed content setter, not the array
+descriptor-transfer implementation.
+
+**Bounds and deferrals:** this is not execution in a real 4D host and does not
+certify Windows behavior or reproduce the originating Poppler crash. The shim
+uses synthetic command procedures and pictures with no format representations;
+it does not establish engine-only application-path/picture-format output
+ownership, native image rendering, or arbitrary command-result ownership.
+The bundled SDK predates object/collection getter APIs; no first-party
+object/collection/JSON helper exists here. `C_POINTER::getVariable` copies
+metadata from `PA_GetPointerValue`, whose header cleanup comment conflicts with
+its reference-style use; no speculative cleanup is added. SDK array resize
+allocation-failure count corruption and wrapper behavior after failed allocation
+remain deferred; passing normal arrays does not certify OOM handling. No SDK
+internals, tracked binaries, command metadata or release settings were changed.
+
+---
+
 ## Requirements & platform notes
 
 - **Pass a native platform path.** `path` must be in the system's own format: a colon-separated path **on macOS** (what `System folder`, `Get 4D folder` and `Document` return), or a backslash path **on Windows**. **On macOS, a POSIX path such as `/Users/me/file.txt` is not accepted.** The plugin interprets it as a colon-separated path, so it names a different item, and the command usually fails with error `2`. If you have a `File` or `Folder` object, pass its `.platformPath`.
